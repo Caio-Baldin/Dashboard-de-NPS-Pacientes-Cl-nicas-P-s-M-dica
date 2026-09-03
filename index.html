@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard de NPS — Pacientes Clínicas Pós-Médica · SLMandic</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div>
+      <div class="brand-kicker">São Leopoldo Mandic · Quintal SLM</div>
+      <div class="brand-title">Dashboard de NPS — Pacientes Clínicas Pós-Médica</div>
+      <div class="brand-sub">Pesquisa via QR code nas unidades · dados agregados e anonimizados</div>
+    </div>
+    <div class="topbar-meta">
+      <div class="meta-chip">Período<b id="periodLabel">10 jun 2026 – 26 ago 2026</b></div>
+      <div class="meta-chip">Última resposta<b id="lastUpdate">26 ago 2026</b></div>
+      <button class="theme-toggle" id="themeToggle" type="button">🌓 Tema</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="filter-bar">
+    <span class="filter-label">Unidade</span>
+    <select class="unit-select" id="unitFilter">
+      <option value="__all__">Todas as unidades</option>
+    </select>
+    <span class="result-count" id="resultCount"></span>
+  </div>
+
+  <h2 class="section-title">Visão geral<span class="unit-badge" data-unit-badge></span></h2>
+  <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+    <div id="overviewGranularity" style="display:flex; gap:8px;">
+      <div class="fb-chip active" data-granularity="all">Tudo</div>
+      <div class="fb-chip" data-granularity="day">Dia</div>
+      <div class="fb-chip" data-granularity="week">Semana</div>
+      <div class="fb-chip" data-granularity="month">Mês</div>
+      <div class="fb-chip" data-granularity="year">Ano</div>
+    </div>
+    <span class="result-count" id="overviewPeriodLabel"></span>
+  </div>
+  <div class="kpi-row" id="kpiRow"></div>
+
+  <h2 class="section-title">Distribuição das respostas<span class="unit-badge" data-unit-badge></span></h2>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div><h3>Categoria NPS</h3><div class="card-sub">Promotores (9–10) · Passivos (7–8) · Detratores (0–6)</div></div>
+      </div>
+      <div class="card-body"><div id="donutChart"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div><h3>Notas atribuídas</h3><div class="card-sub">Contagem de respostas por nota (0 a 10)</div></div>
+        <button class="table-toggle" data-target="notaTable">Ver tabela</button>
+      </div>
+      <div class="card-body">
+        <div id="notaChart"></div>
+        <div id="notaTable" style="display:none; margin-top:14px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="section-title">Evolução ao longo do tempo<span class="unit-badge" data-unit-badge></span></h2>
+  <div class="card">
+    <div class="card-header">
+      <div><h3>NPS ao longo do tempo</h3><div class="card-sub">Períodos com poucas respostas (ponto pequeno) tendem a ser mais voláteis</div></div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <div id="timeGranularity" style="display:flex; gap:8px;">
+          <div class="fb-chip" data-granularity="day">Dia</div>
+          <div class="fb-chip active" data-granularity="week">Semana</div>
+          <div class="fb-chip" data-granularity="month">Mês</div>
+          <div class="fb-chip" data-granularity="year">Ano</div>
+        </div>
+        <button class="table-toggle" data-target="weekTable">Ver tabela</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div id="weekChart"></div>
+      <div id="weekTable" style="display:none; margin-top:14px;"></div>
+    </div>
+  </div>
+
+  <h2 class="section-title">Por unidade e por sentimento<span class="unit-badge" data-unit-badge></span></h2>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div><h3>NPS por unidade</h3><div class="card-sub">Ordenado por número de respostas</div></div>
+        <button class="table-toggle" data-target="unitTable">Ver tabela</button>
+      </div>
+      <div class="card-body">
+        <div id="unitChart"></div>
+        <div id="unitTable" style="display:none; margin-top:14px;"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div><h3>Reação do comentário</h3><div class="card-sub">Classificação automática do texto livre (quando houve comentário)</div></div>
+      </div>
+      <div class="card-body"><div id="reacaoChart"></div></div>
+    </div>
+  </div>
+
+  <h2 class="section-title">Comentários<span class="unit-badge" data-unit-badge></span></h2>
+  <div class="card">
+    <div class="card-body">
+      <div class="fb-controls">
+        <div class="fb-chip active" data-cat="__all__"><span class="dot" style="background:var(--navy)"></span>Todos</div>
+        <div class="fb-chip" data-cat="promotor"><span class="dot" style="background:var(--good)"></span>Promotores</div>
+        <div class="fb-chip" data-cat="passivo"><span class="dot" style="background:var(--warning)"></span>Passivos</div>
+        <div class="fb-chip" data-cat="detrator"><span class="dot" style="background:var(--critical)"></span>Detratores</div>
+        <input type="text" class="fb-search" id="fbSearch" placeholder="Buscar nos comentários…">
+        <span class="fb-count" id="fbCount"></span>
+      </div>
+      <div class="fb-list" id="fbList"></div>
+    </div>
+  </div>
+
+  <div class="foot-note">
+    <b>Sobre estes dados.</b> Base de <span id="totalResponses"></span> respostas coletadas por QR code entre <span id="footPeriodLabel"></span>, referentes exclusivamente à pesquisa "NPS Pacientes Clínicas Pós-Médica". Por política de privacidade, este dashboard exibe apenas métricas agregadas e comentários de texto livre — nenhum dado de identificação do paciente (nome, CPF, telefone, e-mail ou prontuário) é utilizado ou exibido. Arquivo de uso interno.
+  </div>
+
+</div>
+
+<div class="viz-tooltip" id="tooltip"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
