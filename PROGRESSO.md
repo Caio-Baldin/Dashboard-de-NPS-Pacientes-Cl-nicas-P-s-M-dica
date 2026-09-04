@@ -1,46 +1,53 @@
 # Progresso — Dashboard de NPS (SLMandic)
 
-Documento de continuidade: estado atual do projeto, decisões tomadas e o que falta. Última atualização: 2026-09-03.
+Documento de continuidade: estado atual do projeto, decisões tomadas e o que falta. Última atualização: 2026-09-04.
 
 ## Próximo passo imediato (retomar daqui)
 
-**Pendência do Indecx resolvida nesta sessão (03/09/2026) -- falta só preencher o `.env` e testar.**
-`indecx_client.py` deixou de ser um template especulativo: agora replica o fluxo real de automação já validado
-em outro projeto (`ouvidoria-csat/motor`, mesma empresa Indecx, pesquisa diferente -- ouvidoria acadêmica) --
-login → solicitar exportação → polling em `/v2/downloads/` → download do xlsx. Só o `groupId`/`actionId`/`metric`
-mudam entre as duas pesquisas; `companyId` é o mesmo. Os valores da pesquisa de NPS de paciente foram capturados
-via DevTools nesta sessão (ver constantes no topo de `indecx_client.py`).
+**Pipeline de dados 100% pronto e validado. Hospedagem decidida (04/09/2026): repositório público no GitHub Free.**
 
-Novo arquivo `fetch_indecx.py` (mesmo padrão de `fetch_consultaja.py`): baixa a planilha e salva em
-`dados-fonte/export_indecx_AAAA_MM_DD.xlsx` (avisa no console se o arquivo do dia já existir, em vez de
-sobrescrever em silêncio -- diferente do bug conhecido do `fetch_consultaja.py`, ver pendência 5 abaixo).
-`main.py --source api` agora chama esse fluxo direto (baixa + já processa), sem precisar de `--date-from`/`--date-to`
-(a janela é sempre os últimos 365 dias, calculada na hora, igual ao motor original).
+### O que já funciona (não precisa mexer de novo)
 
-**Falta você fazer, antes de rodar de verdade:**
-1. Copiar `pipeline/.env.example` para `pipeline/.env` e preencher `INDECX_EMAIL` / `INDECX_SENHA` /
-   `INDECX_FRONTEND_ACCESS_KEY` -- mesma conta Indecx que você já usa pra exportar a planilha na mão (login/senha
-   iguais; o assistente não tem acesso a esses valores, nunca foram digitados na conversa).
-2. Rodar `python fetch_indecx.py --dry-run` primeiro (só valida login/token, não gera exportação) --
-   se der erro, revisar as credenciais antes de seguir.
-3. Depois, `python main.py --source api --dry-run` (baixa de verdade + mostra resumo, mas não grava `script.js`)
-   e conferir o nº de respostas/avisos de sanitização antes de rodar sem `--dry-run`.
-4. Se `groupId`/`actionId` capturados estiverem errados (ex.: pesquisa/período errado), o request de exportação
-   ainda retorna 200 mas o arquivo baixado pode vir vazio ou com a pesquisa errada -- comparar o nº de respostas
-   com o que aparece na tela do Indecx antes de confiar no primeiro resultado.
+- **Indecx (NPS de paciente) resolvido de ponta a ponta.** `indecx_client.py` deixou de ser template: replica o
+  fluxo de automação de `ouvidoria-csat/motor` (login → solicitar exportação → polling → download), com
+  `groupId`/`actionId`/`metric` da pesquisa de NPS de paciente (capturados via DevTools nesta sessão --
+  `companyId` é o mesmo do outro projeto, `groupId`/`actionId`/`metric` são específicos desta pesquisa).
+  `pipeline/.env` já está preenchido e testado.
+- **Validado contra planilha manual**: `pipeline/comparar_planilhas.py` (célula a célula, sem expor dado
+  sensível) comparou o export via API com um export manual do Indecx -- cabeçalho idêntico (63 colunas), 0
+  diferenças em 8.866 células nas 143 respostas em comum. Feito de novo em 04/09/2026 com um segundo par
+  (ConsultaJá também comparado, via chave composta já que a base não tem coluna de ID único) -- só diferenças
+  esperadas pelo intervalo entre os dois downloads (status/turma/profissional), nada em Data/Paciente/Celular.
+- **Comando único pra atualizar tudo**: `python pipeline/atualizar_tudo.py` (não precisa de `.bat`) roda os 4
+  passos -- ConsultaJá → `ATENDIMENTOS`, Indecx → `RECORDS`/`WEEKLY` -- e grava `script.js`. Não faz
+  commit/push (isso continua manual, de propósito).
+- **Dados atuais em `script.js`** (gravados em 04/09/2026): 50.185 agendamentos → 748 combinações dia+unidade
+  e 144 respostas de NPS → 13 semanas. Aviso de sanitização de um CPF digitado por engano num comentário
+  (unidade QUINTAL SLM - BRASÍLIA, 06/08/2026) removido automaticamente pelo `sanitize.py` -- revisado (confirmado
+  que só `[removido]` entrou no arquivo, nenhum CPF cru).
+
+### Hospedagem: decidido -- repositório público no GitHub Free (04/09/2026)
+
+Testamos repositório privado na conta pessoal em 03/09: o GitHub exige plano pago (Pro/Team/Enterprise Cloud)
+pra usar Pages com repo privado. Repositório pessoal antigo foi apagado.
+
+**Decisão do usuário (04/09/2026): seguir com GitHub Free mesmo, repositório público.** Ciente do trade-off --
+diferente de um repo privado, isso expõe o histórico de commits e o `script.js` completo (notas + comentários
+de pacientes, já anonimizados) para qualquer pessoa na internet. Mitigação combinada nesta sessão: manter só
+nota/data/hora/unidade/comentário/reação (nunca nome/endereço/CPF/telefone -- já é assim por design, ver
+"Anonimização por lista de permissão" abaixo) e revisar o histórico do git antes do primeiro push (sem CPF/e-mail
+nem `.env`/`.xlsx` commitado em nenhum commit). Repositório criado: `Caio-Baldin/Dashboard-de-NPS-Pacientes-
+Cl-nicas-P-s-M-dica` (remoto `origin` já configurado). Falta ativar Pages em Settings → Pages, branch `main`,
+depois do primeiro push.
 
 Confirmado em sessão anterior (31/08/2026): `ATENDIMENTOS` (ConsultaJá → card "Engajamento") e `RECORDS`/`WEEKLY`
 (Indecx → NPS Score/Respostas/Nota média/Promotores/Detratores) são fontes **completamente independentes** --
 rodar um pipeline não atualiza o outro. Ver `script.js:30-53` (`computeStats()` usa `RECORDS`, `computeEngajamento()`
 usa `ATENDIMENTOS`).
 
-`base-manual-certa.xlsx` (colocada na raiz do projeto por engano em 31/08) foi movida para `dados-fonte/` nesta
-sessão -- estrutura conferida (`explore_planilha.py`, só cabeçalho/contagens agregadas): é uma base de
-agendamentos (mesmo formato ConsultaJá), não a planilha do Indecx. Serve como fonte alternativa pro
-`update_attendance.py` (Engajamento), não pro NPS.
-
-Outras pendências (repositório GitHub ainda não criado, hospedagem, etc.) estão listadas em "Pendências / próximos
-passos", no fim deste documento.
+`base-manual-certa.xlsx` e as planilhas de teste (`export_indecx_26_09_03.xlsx` antigo, `manual-comentário-
+pacientes.xlsx`) foram apagadas de `dados-fonte/` nesta sessão, depois de comparadas -- só ficaram as duas
+planilhas "de verdade" mais recentes (`Base_Consulta_Ja26_09_03.xlsx`, `export_indecx_26_09_03.xlsx`).
 
 `codigo-consultaja.txt` (rascunho do script original, que ficava na raiz) **foi apagado** -- toda a lógica dele já
 está em `pipeline/consultaja_client.py`/`fetch_consultaja.py`, então não fazia mais falta.
@@ -63,7 +70,9 @@ pipeline/             scripts Python que regeneram os dados de script.js
   update_attendance.py     ATENDIMENTOS a partir da base de agendamentos
   fetch_consultaja.py      busca a base de agendamentos direto na API da ConsultaJá (opcional, manual)
   fetch_indecx.py          busca a planilha de NPS de paciente direto na API do Indecx (opcional, manual)
-  atualizar_local.py       orquestra fetch_consultaja.py + update_attendance.py e gera o resumo (chamado pelo .bat)
+  atualizar_local.py       orquestra só fetch_consultaja.py + update_attendance.py (chamado pelo .bat antigo)
+  atualizar_tudo.py        orquestra as DUAS fontes (ConsultaJá + Indecx) num comando só -- python pipeline/atualizar_tudo.py
+  comparar_planilhas.py    compara duas planilhas do Indecx célula a célula, sem expor dado sensível (validação)
   explore_planilha.py      explora estrutura de uma planilha nova sem expor dado de paciente
   attendance.py, transform.py, loaders.py, sanitize.py, render_script.py, config.py, indecx_client.py, consultaja_client.py
   atualizacoes.log         (gitignored) histórico local das execuções -- só contagens agregadas
@@ -109,7 +118,7 @@ Todos partem do mesmo conjunto de respostas: primeiro filtra por unidade (`filte
 ## Pendências / próximos passos
 
 1. **API do Indecx**: resolvida em 03/09/2026 -- `indecx_client.py` agora é uma implementação real (login/exportação/polling/download), não mais um template. Falta só o usuário preencher `pipeline/.env` com as credenciais e rodar `fetch_indecx.py --dry-run` pra validar (ver "Próximo passo imediato" no topo deste arquivo). O caminho por planilha exportada manualmente (`main.py --source file`) continua funcionando como alternativa/fallback.
-2. **Hospedagem**: ainda não decidida (repositório GitHub ainda não criado). Por política interna, não hospedar em serviços externos (Vercel/Netlify/Hostinger etc.) -- levar para a TI indicar um ambiente interno, já que os dados (mesmo anonimizados) são de pacientes. Ver aviso em `README.md`. Fluxo de publicação já está pronto (Plano A, item 5 abaixo): quando o repositório existir, é só seguir "Primeira vez" no `README.md`.
+2. **Hospedagem**: decidida em 04/09/2026 -- **repositório público no GitHub Free** (ver "Próximo passo imediato" no topo deste arquivo). Testamos repositório privado na conta pessoal antes; o GitHub exige plano pago pra Pages com repo privado. Decisão consciente do usuário: seguir público mesmo, aceitando que o histórico do repo e o `script.js` (notas + comentários já anonimizados) ficam visíveis a qualquer pessoa -- nome/endereço/CPF/telefone nunca entram no arquivo (lista de permissão por coluna, ver `pipeline/config.py`). Continua não hospedando em serviços externos como Vercel/Netlify/Hostinger -- GitHub Pages é o único ambiente usado.
    - **Descartado por decisão consciente**: um botão dentro da própria página publicada que chamasse a API da ConsultaJá ao vivo (exigiria token exposto no navegador a qualquer visitante) e atualização automática/agendada rodando sozinha sem supervisão (exigiria um backend em ambiente interno, autenticação no endpoint e alinhamento prévio com a TI). Ver Plano A abaixo, que evita os dois problemas.
 3. **Navegação de períodos**: hoje o seletor Dia/Semana/Mês/Ano da Visão geral só mostra o período mais recente. Se quiser navegar para períodos anteriores (setas ‹ ›), fica para uma próxima iteração -- foi a opção descartada quando perguntei.
 4. Se a base de agendamentos for atualizada (novo arquivo em `dados-fonte/`), rodar `update_attendance.py` de novo para atualizar `ATENDIMENTOS`. Não precisa rodar toda vez que `RECORDS` muda -- só quando a planilha de agendamentos mudar.

@@ -85,7 +85,10 @@ automatizar essa etapa de fato (rodar sem supervisão), alinhem antes com a
 TI -- é uma integração externa processando dado de paciente.
 
 Configuração: copie `.env.example` para `.env` e preencha `CONSULTAJA_TOKEN`
-(`CONSULTAJA_START_DATE`/`CONSULTAJA_END_DATE` são opcionais). **Nunca**
+(`CONSULTAJA_START_DATE`/`CONSULTAJA_END_DATE` são opcionais). Deixando
+`CONSULTAJA_END_DATE` em branco, `config.py` calcula sozinho a cada execução
+(fim do mês, 2 meses à frente de hoje) -- não precisa editar manualmente
+quando o mês virar; só preencha se quiser travar numa data fixa. **Nunca**
 commite o `.env`.
 
 ```

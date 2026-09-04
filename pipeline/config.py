@@ -5,8 +5,10 @@ Credenciais nunca ficam hardcoded aqui -- vêm de variáveis de ambiente
 """
 from __future__ import annotations
 
+import calendar
 import os
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -49,11 +51,25 @@ class ConsultaJaConfig:
         return bool(self.token)
 
 
+def default_consultaja_end_date(today: date | None = None) -> str:
+    """Fim do mês, 2 meses à frente de hoje (ex.: hoje em setembro -> 30/11).
+
+    Recalculado a cada execução -- não precisa editar CONSULTAJA_END_DATE
+    manualmente quando o mês vira, basta deixá-la vazia no .env.
+    """
+    today = today or date.today()
+    month_index = today.month - 1 + 2  # 0-based, +2 meses
+    year = today.year + month_index // 12
+    month = month_index % 12 + 1
+    last_day = calendar.monthrange(year, month)[1]
+    return date(year, month, last_day).isoformat()
+
+
 def load_consultaja_config() -> ConsultaJaConfig:
     return ConsultaJaConfig(
         token=os.getenv("CONSULTAJA_TOKEN") or None,
         start_date=os.getenv("CONSULTAJA_START_DATE") or None,
-        end_date=os.getenv("CONSULTAJA_END_DATE") or None,
+        end_date=os.getenv("CONSULTAJA_END_DATE") or default_consultaja_end_date(),
     )
 
 
